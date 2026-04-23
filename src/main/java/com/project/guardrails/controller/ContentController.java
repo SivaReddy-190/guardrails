@@ -1,6 +1,7 @@
 package com.project.guardrails.controller;
 
 import com.project.guardrails.dtos.CreateCommentRequest;
+import com.project.guardrails.dtos.CreateLikeRequest;
 import com.project.guardrails.dtos.CreatePostRequest;
 import com.project.guardrails.model.Comment;
 import com.project.guardrails.model.Post;
@@ -28,15 +29,16 @@ public class ContentController {
     @PostMapping("/{postId}/comments")
     public ResponseEntity<Comment> addComment(
             @PathVariable Long postId,
+            @RequestParam(required = false) Long parentCommentId,
             @RequestBody CreateCommentRequest request) {
 
-        Comment createdComment = contentService.addComment(postId, request);
+        Comment createdComment = contentService.addComment(postId, request, parentCommentId);
         return new ResponseEntity<>(createdComment, HttpStatus.CREATED);
     }
 
     @PostMapping("/{postId}/like")
-    public ResponseEntity<String> likePost(@PathVariable Long postId) {
-        contentService.likePost(postId);
+    public ResponseEntity<String> likePost(@PathVariable Long postId, @RequestBody CreateLikeRequest request) {
+        contentService.likePost(postId, request.authorId(),request.authorType() );
         return ResponseEntity.ok("Post liked successfully");
     }
 }
