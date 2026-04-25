@@ -23,6 +23,7 @@ public class ContentService {
     private final UserRepository userRepository;
     private final BotRepository botRepository;
     private final RedisGuardrailService redisGuardrailService;
+    private final NotificationEngine notificationEngine;
 
 //    private void validateUser(Long authorId, AuthorType type) {
 //        if (type == AuthorType.USER) {
@@ -50,6 +51,7 @@ public class ContentService {
         return postRepository.save(post);
     }
 
+    @Transactional
     public Comment addComment(Long postId, CreateCommentRequest commentRequest, Long parentCommentId) {
 
 //        AuthorType type = AuthorType.valueOf(commentRequest.authorType().toUpperCase());
@@ -61,8 +63,8 @@ public class ContentService {
 
         boolean isBot = type == AuthorType.BOT;
         int depth = 1;
-        System.out.println(parentCommentId);
-        if(parentCommentId != null) {
+
+        if (parentCommentId != null) {
             Comment parent = commentRepository.findById(parentCommentId)
                     .orElseThrow(() -> new RuntimeException("Parent comment not found"));
 
@@ -71,17 +73,17 @@ public class ContentService {
             if (depth > 20) {
                 throw new RateLimitExceedException("A comment thread cannot go deeper than 20 levels");
             }
+        }
 
-            if (isBot) {
+        if (isBot) {
 
-                if (!redisGuardrailService.allowBotCommentsOnPost(postId)) {
-                    throw new RateLimitExceedException("This post has reached the maximum number of bot comments allowed");
-                }
+            if (!redisGuardrailService.allowBotCommentsOnPost(postId)) {
+                throw new RateLimitExceedException("This post has reached the maximum number of bot comments allowed");
+            }
 
-                if (post.getAuthorType() == AuthorType.USER) {
-                    if (!redisGuardrailService.checkAndSetBotCooldown(commentRequest.authorId(), post.getAuthorId())) {
-                        throw new RateLimitExceedException("This bot is on cooldown for commenting on posts by this user");
-                    }
+            if (post.getAuthorType() == AuthorType.USER) {
+                if (!redisGuardrailService.checkAndSetBotCooldown(commentRequest.authorId(), post.getAuthorId())) {
+                    throw new RateLimitExceedException("This bot is on cooldown for commenting on posts by this user");
                 }
             }
         }
@@ -96,24 +98,28 @@ public class ContentService {
 
         Comment savedComment = commentRepository.save(comment);
 
-        int point = isBot?1:50;
+        int point = isBot ? 1 : 50;
         redisGuardrailService.incrementViralityScore(postId, point);
+
+        if(isBot && post.getAuthorType().equals(AuthorType.USER)) {
+            notificationEngine.processBotInteraction(post.getAuthorId(), commentRequest.authorId());
+        }
+
         return savedComment;
     }
 
     @Transactional
     public void likePost(Long postId, Long authorId, String authorType) {
 
-//        AuthorType type = AuthorType.valueOf(authorType.toUpperCase());
+        AuthorType type = AuthorType.valueOf(authorType.toUpperCase());
 //        validateUser(authorId, type);
-
 
 
         postRepository.findById(postId)
                 .orElseThrow(() -> new RuntimeException("Post not found"));
 
-//        if(type == AuthorType.USER) {
-//            redisGuardrailService.incrementViralityScore(postId, 10);
-//        }
+        if (type == AuthorType.USER) {
+            redisGuardrailService.incrementViralityScore(postId, 20);
+        }
     }
 }

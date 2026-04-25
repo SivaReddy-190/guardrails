@@ -14,13 +14,13 @@ public class RedisGuardrailService {
 
    public void incrementViralityScore(Long posiId, int points) {
 
-       String key = "Post:"+ posiId + "virality_score:";
+       String key = "Post:"+ posiId + ":virality_score";
          redisTemplate.opsForValue().increment(key, points);
    }
 
    public boolean allowBotCommentsOnPost(Long postId) {
 
-       String key = "Post: "+ postId + ":bot_count";
+       String key = "Post:"+ postId + ":bot_count";
        Long currentCount = redisTemplate.opsForValue().increment(key);
 
        if(currentCount!=null && currentCount > 100) {
@@ -33,7 +33,7 @@ public class RedisGuardrailService {
 
    public boolean checkAndSetBotCooldown(Long botId, long humanId) {
 
-       String key = "cooldown:bot_"+botId+"human_"+humanId;
+       String key = "cooldown:bot_"+botId+":human_"+humanId;
 
        Boolean isAllowed = redisTemplate.opsForValue()
                .setIfAbsent(key, "locked", Duration.ofMinutes(10));

@@ -3,7 +3,6 @@ package com.project.guardrails.model;
 import com.project.guardrails.enums.AuthorType;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CollectionId;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
